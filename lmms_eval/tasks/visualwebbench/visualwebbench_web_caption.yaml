@@ -1,0 +1,29 @@
+# Copyright 2025 Xiaomi Corporation.
+task: "visualwebbench_web_caption"
+test_split: test
+dataset_path: visualwebbench/VisualWebBench
+dataset_name: web_caption
+dataset_kwargs:
+  token: True
+output_type: generate_until
+doc_to_visual: !function utils.visualwebbench_doc_to_visual
+doc_to_text: !function utils.visualwebbench_doc_to_text
+doc_to_target: "answer"
+generation_kwargs:
+  max_new_tokens: 512
+  temperature: 0
+  do_sample: False
+process_results: !function utils.visualwebbench_process_result
+metric_list:
+  - metric: accuracy
+    aggregation: !function utils.visualwebbench_aggregate_result
+    higher_is_better: true
+  - metric: rouge_1
+    aggregation: !function utils.visualwebbench_aggregate_result
+    higher_is_better: true
+  - metric: rouge_2
+    aggregation: !function utils.visualwebbench_aggregate_result
+    higher_is_better: true
+  - metric: rouge_l
+    aggregation: !function utils.visualwebbench_aggregate_result
+    higher_is_better: true

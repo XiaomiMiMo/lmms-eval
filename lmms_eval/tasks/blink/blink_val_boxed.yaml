@@ -1,0 +1,25 @@
+# Copyright 2025 Xiaomi Corporation.
+task: "blink_val_boxed"
+test_split: val
+dataset_path: lscpku/BLINK
+dataset_kwargs:
+  token: True
+output_type: generate_until
+doc_to_visual: !function utils.blink_doc_to_visual
+doc_to_text: !function utils.blink_doc_to_text_boxed
+doc_to_target: "answer"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0
+  top_p: 1.0
+  num_beams: 1
+  do_sample: false
+process_results: !function utils.blink_process_results
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+metric_list:
+  - metric: accuracy
+    aggregation: !function utils.blink_aggregate_results
+    higher_is_better: true
