@@ -1,0 +1,36 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: tobiaslee/charxiv_qas 
+dataset_kwargs:
+  token: True
+task: "charxiv_boxed"
+test_split: train 
+output_type: generate_until
+doc_to_visual: !function utils.charxiv_doc_to_visual
+doc_to_text: !function utils.charxiv_doc_to_text
+doc_to_target: "answer"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0.0
+  do_sample: false  
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+# The return value of process_results will be used by metrics
+process_results: !function utils.charxiv_process_results
+metric_list:
+  - metric: overall  
+    aggregation: !function utils.charxiv_aggregate_results
+    higher_is_better: true
+  - metric: reasoning
+    aggregation: !function utils.charxiv_aggregate_results
+    higher_is_better: true
+  - metric: descriptive
+    aggregation: !function utils.charxiv_aggregate_results
+    higher_is_better: true
+lmms_eval_specific_kwargs:
+  default:
+    post_prompt: "\nPut your final answer in \\boxed{}."
+metadata:
+  - version: 0.0

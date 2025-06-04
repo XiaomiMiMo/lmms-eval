@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 task: "blink_val"
 test_split: val
 dataset_path: lscpku/BLINK
@@ -15,7 +16,9 @@ generation_kwargs:
   num_beams: 1
   do_sample: false
 process_results: !function utils.blink_process_results
-
+lmms_eval_specific_kwargs:
+  default:
+    post_prompt: "\nAnswer with the option's letter from the given choices directly."
 metric_list:
   - metric: accuracy
     aggregation: !function utils.blink_aggregate_results

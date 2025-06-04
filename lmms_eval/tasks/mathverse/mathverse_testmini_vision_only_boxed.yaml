@@ -1,0 +1,36 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: CaraJ/MathVerse-lmmseval
+dataset_name: testmini_version_split
+dataset_kwargs:
+  token: False
+task: "mathverse_testmini_vision_only_boxed"
+test_split: vision_only
+output_type: generate_until
+doc_to_visual: !function utils.mathverse_doc_to_visual
+doc_to_text: !function utils.mathverse_doc_to_text
+doc_to_target: "answer"
+generation_kwargs:
+  until:
+    - "ASSISTANT:"
+  max_new_tokens: 32768
+  temperature: 0
+  top_p: 1.0
+  num_beams: 1
+  do_sample: false
+process_results: !function utils.mathverse_boxed_process_results
+metric_list:
+  - metric: gpt_eval_score
+    aggregation: !function utils.mathverse_aggregate_results_eval
+    higher_is_better: true
+  - metric: math_verify
+    aggregation: !function utils.mathverse_math_verify_aggregate_results
+    higher_is_better: true
+  
+lmms_eval_specific_kwargs:
+  default:
+    shot_type: "vision_only_reasoning"
+    query_type: "query_wo" # now only support query_wo
+model_specific_generation_kwargs:
+  llava:
+    image_aspect_ratio: original

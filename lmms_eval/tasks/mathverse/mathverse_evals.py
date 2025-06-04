@@ -73,84 +73,32 @@ Judgement: """
 
 
 class MathVerseEvaluator:
-    API_TYPE = os.getenv("API_TYPE", "openai")
-
-    if API_TYPE == "openai":
-        API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
-        API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        }
-    elif API_TYPE == "azure":
-        API_URL = os.getenv("AZURE_ENDPOINT", "https://api.cognitive.microsoft.com/sts/v1.0/issueToken")
-        API_KEY = os.getenv("AZURE_API_KEY", "YOUR_API_KEY")
-        headers = {
-            "api-key": API_KEY,
-            "Content-Type": "application/json",
-        }
-
-    def __init__(self, api_key, gpt_model="gpt-3.5-turbo", quick_extract=False):
+    def __init__(self, api_type, api_url, api_key, gpt_model, quick_extract=False):
+        self.api_type = api_type
+        self.api_url = api_url
         self.api_key = api_key
         self.gpt_model = gpt_model
         self.quick_extract = quick_extract
+        if self.api_type == "openai":
+            from lmms_eval.tasks._task_utils.gpt_eval_utils import OpenAIClient
+            self.client = OpenAIClient(api_url=self.api_url, api_key=self.api_key, model=self.gpt_model, task="mathverse")
 
-    def _post_request(self, payload):
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        response = requests.post(self.API_URL, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        return response.json()
 
-    def get_chat_response(self, prompt, temperature=0, max_tokens=256, n=1, patience=10000000, sleep_time=0):
+    def get_chat_response(self, prompt):
         messages = [
             {"role": "user", "content": prompt},
         ]
-        payload = {"model": self.gpt_model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "n": n}
-
-        while patience > 0:
-            patience -= 1
-            try:
-                response = self._post_request(payload)
-                if n == 1:
-                    prediction = response["choices"][0]["message"]["content"].strip()
-                    if prediction and prediction != "":
-                        return prediction
-                else:
-                    prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
-                    if prediction and prediction[0] != "":
-                        return prediction
-
-            except Exception as e:
-                # some model may output repetitive answer, which ChatGPT will throw an error.
-                if "repetitive patterns" in str(e):
-                    print(str(e))
-                    print("Continue with empty answer")
-                    return ""
-                # some answer may contain some sensitive words, like 'test'
-                if "sensitive" in str(e) or "400" in str(e):
-                    print(str(e))
-                    print("Continue with empty answer")
-                    return "0"
-
-                if "Rate limit" not in str(e):
-                    eval_logger.error(e)
-
-                if "Please reduce the length of the messages" in str(e):
-                    eval_logger.error("!!Reduce prompt size")
-                    # reduce input prompt and keep the tail
-                    new_size = int(len(prompt) * 0.9)
-                    new_start = len(prompt) - new_size
-                    prompt = prompt[new_start:]
-                    payload["messages"] = [
-                        {"role": "user", "content": prompt},
-                    ]
-
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-        return ""
+        generation_kwargs = {
+            "temperature": 0,
+            "max_tokens": 256,
+        }
+        response = self.client.get_chat_response(
+            messages,
+            postprocess_response=lambda x: x.strip(),
+            default_response="",
+            generation_kwargs=generation_kwargs,
+        )
+        return response
 
     def verify_extraction(self, extraction):
         extraction = extraction.strip()
@@ -176,7 +124,7 @@ class MathVerseEvaluator:
         # general extraction
         try:
             full_prompt = self.create_extract_prompt(DEMO_PROMPT_EXTRACT, response)
-            extraction = self.get_chat_response(full_prompt, temperature=0, max_tokens=256, n=1)
+            extraction = self.get_chat_response(full_prompt)
             return extraction
         except Exception as e:
             eval_logger.error(e)
@@ -189,12 +137,17 @@ class MathVerseEvaluator:
             return extraction == answer
 
         try:
-            full_prompt = self.create_match_prompt(DEMO_PROMPT_SCORE, question, answer, extraction)
-            while True:
-                extraction = self.get_chat_response(full_prompt, temperature=0, max_tokens=8, n=1)
-                judgement = extraction.replace("Judgement:", "").strip()
-                if judgement.strip() in ["0", "1"]:
-                    return int(judgement) == 1
+            if extraction == "":
+                return False
+            elif answer in ['A', 'B', 'C', 'D', 'E', 'F'] and answer == extraction[0]:
+                return True
+            else:
+                full_prompt = self.create_match_prompt(DEMO_PROMPT_SCORE, question, answer, extraction)
+                while True:
+                    extraction = self.get_chat_response(full_prompt)
+                    judgement = extraction.replace("Judgement:", "").strip()
+                    if judgement.strip() in ["0", "1"]:
+                        return int(judgement) == 1
 
         except Exception as e:
             print(e)
@@ -259,12 +212,21 @@ class MathVerseEvaluator:
                 hint_text = hint["multi-choice"]
             else:  # free-form
                 hint_text = hint["free-form"]
+        elif shot_type == "vision_only_reasoning":
+            if question_type == "multi-choice":
+                # hint_text = "Please reason step by step, and answer the question with option letter from given choices. Put your final answer within \\boxed{}."
+                hint_text = "Answer the question in the image. Provide the correct option letter, e.g., A, B, C, D, within \\boxed{}."
+            else:  # free-form
+                # hint_text = "Please reason step by step, and answer the question using a single word or phrase. Put your final answer within \\boxed{}."
+                hint_text = "Answer the question in the image. Put your final answer within \\boxed{}."
 
         # question
-        if shot_type == "format-prompt":
+        if shot_type in ["format-prompt"]:
             question_text = f"{problem[query_type]}"
         elif shot_type == "custom-prompt":
             question_text = f"Question: {question}"
+        elif shot_type == "vision_only_reasoning":
+            question_text = f""
 
         elements = [hint_text, question_text]
         test_query = "\n".join([e for e in elements if e != ""])
@@ -273,28 +235,27 @@ class MathVerseEvaluator:
         query = demo_prompt + "\n\n" + test_query
         query = query.strip()
         return query
+    
+    def eval_instance(self, inst, config):
+        full_prediction = inst["prediction"].strip()
+        problem = {
+            "question_type": inst["question_type"],
+            "answer": inst["answer"] if "answer" in inst else None,
+            "question_for_eval": inst["question"],
+        }
+        if config["metadata"].get("trunk_response", -1) > 0:
+            prediction = " ".join(full_prediction.split(" ")[-config["metadata"]["trunk_response"] :])
+        else:
+            prediction = full_prediction
+        extraction = self.extract_answer(prediction)
+        true_false = self.score_answer(problem["question_for_eval"], problem["answer"], extraction, config["metadata"]["quick_match"]) if problem["answer"] is not None else False
+
+        inst["extraction"] = extraction
+        inst["prediction"] = prediction
+        inst["true_false"] = true_false
+        return inst
 
     def eval_results(self, results, config):
-        # extract and score for each question
-        for inst in tqdm(results):
-            full_prediction = inst["prediction"].strip()
-            problem = {
-                "question_type": inst["question_type"],
-                "answer": inst["answer"] if "answer" in inst else None,
-                "question_for_eval": inst["question"],
-            }
-            if config["metadata"].get("trunk_response", -1) > 0:
-                prediction = " ".join(full_prediction.split(" ")[-config["metadata"]["trunk_response"] :])
-            else:
-                prediction = full_prediction
-            extraction = self.extract_answer(prediction)
-            # set test set answer to None
-            true_false = self.score_answer(problem["question_for_eval"], problem["answer"], extraction, config["metadata"]["quick_match"]) if problem["answer"] is not None else False
-
-            inst["extraction"] = extraction
-            inst["prediction"] = prediction
-            inst["true_false"] = true_false
-
         # calculate total scores
         sample_index = [result["sample_index"] for result in results]
         total = len(results)

@@ -1,5 +1,6 @@
 # Copyright 2025 Xiaomi Corporation.
-dataset_path: lmms-lab/OlympiadBench-official
+
+dataset_path: lscpku/OlympiadBench-official
 dataset_kwargs:
   token: True
 dataset_name: physics_zh_all

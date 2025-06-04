@@ -1,0 +1,6 @@
+# Copyright 2025 Xiaomi Corporation.
+
+group: mmiq
+task:
+  - mmiq_en
+  - mmiq_zh

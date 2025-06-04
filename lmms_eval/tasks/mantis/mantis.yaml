@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 dataset_path: TIGER-Lab/Mantis-Eval
 dataset_kwargs:
   token: True

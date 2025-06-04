@@ -1,9 +1,11 @@
 # Copyright 2025 Xiaomi Corporation.
+
 import json
 import re
 
 import numpy as np
-from lmms_eval.tasks._task_utils.math_verify_ext import compute_score_with_ext
+from lmms_eval.tasks._task_utils.math_verify_utils import MathVerifyFn
+from lmms_eval.tasks._task_utils.eval_utils import extract_final_boxed_content
 
 
 def preprocess(str1):
@@ -61,7 +63,7 @@ Example of expected JSON response format:
     return text
 
 
-def dynamath_r_doc_to_text(doc):
+def dynamath_boxed_doc_to_text(doc):
     question = doc["question"]
     text = f"## Question\n{question}"
     if doc["answer_type"] == "float":
@@ -89,6 +91,7 @@ def dynamath_process_results(doc, results):
         "subject": doc.get('subject'),
         "knowledge level": doc.get('level'),
         "Ground truth": doc.get('ground_truth'),
+        "doc_id": doc.get('id'),
         "response": dj
     }
     try:
@@ -125,24 +128,23 @@ def dynamath_process_results(doc, results):
                 temp_data["result"] = "fail"
     except:
         temp_data["result"] = "fail"
-    return {"dynamath_standard_eval": temp_data}
+    return {
+        "dynamath_standard_eval": temp_data,
+        "dynamath_worst_case_acc": temp_data,
+    }
 
 
-def dynamath_r_process_results(doc, results):
-    math_verify_score, math_verify_ext = compute_score_with_ext(results[0].strip(), doc["ground_truth"])
-    answer = results[0]
-    answer = re.findall(r"\\boxed\{(.*)\}", answer)
-    
-    if len(answer) == 0:
-        answer = ""
-    else:
-        answer = answer[-1]
+math_verify_fn = MathVerifyFn()
+def dynamath_boxed_process_results(doc, results):
+    math_verify_score, math_verify_ext = math_verify_fn(results[0].strip(), doc["ground_truth"])
+    answer = extract_final_boxed_content(results[0])
 
     temp_data = {
         "question": doc.get('question'),
         "subject": doc.get('subject'),
         "knowledge level": doc.get('level'),
         "Ground truth": doc.get('ground_truth'),
+        "doc_id": doc.get('id'),
         "response": answer
     }
     try:
@@ -180,11 +182,26 @@ def dynamath_r_process_results(doc, results):
         temp_data["result"] = "fail"
     return {
         "dynamath_standard_eval": temp_data, 
+        "dynamath_worst_case_acc": temp_data,
         "math_verify": {
             "score": math_verify_score,
             "extraction": math_verify_ext
         }
     }
+
+
+from collections import defaultdict
+def dynamath_aggregate_results_worst_case_acc(results, args):
+    doc_results = defaultdict(list)
+    for result in results:
+        doc_results[result["doc_id"]].append(result)
+
+    correct_docs = 0
+    total_docs = len(doc_results)
+    for doc_id, results in doc_results.items():
+        if all(result["result"] == "correct" for result in results):
+            correct_docs += 1
+    return correct_docs / total_docs if total_docs > 0 else 0
 
 
 def dynamath_aggregate_results(results, args):

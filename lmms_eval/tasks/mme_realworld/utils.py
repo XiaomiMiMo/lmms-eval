@@ -13,6 +13,7 @@ import yaml
 from loguru import logger as eval_logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 TASKS = [
     "Reasoning",
@@ -51,9 +52,10 @@ def decode_base64_to_image(base64_string, target_size=-1):
 
 def mme_realworld_doc_to_text(doc, lmms_eval_specific_kwargs=None):
     question = doc["question"]
-    option_prompt = "The choices are listed below:\n" + "\n".join(doc["multi-choice options"]) + "\n"
-
-    question += " " + option_prompt + "Select the best answer to the above multiple-choice question based on the image. Respond with only the letter (A, B, C, D, or E) of the correct option.\nThe best answer is: "
+    option_prompt = "The choices are listed below:\n" + "\n".join(doc["multi-choice options"])
+    question += " " + option_prompt
+    if "post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["post_prompt"]:
+        question += lmms_eval_specific_kwargs["post_prompt"]
     return question
 
 
@@ -66,9 +68,10 @@ def mme_realworld_doc_to_text_exact_match(doc, lmms_eval_specific_kwargs=None):
 
 def mme_realworld_cn_doc_to_text(doc, lmms_eval_specific_kwargs=None):
     question = doc["question"]
-    option_prompt = "选项如下所示:\n" + "\n".join(doc["multi-choice options"]) + "\n"
-
-    question += " " + option_prompt + "根据图像选择上述多项选择题的最佳答案。只需回答正确选项的字母（A, B, C, D 或 E）。\n最佳答案为： "
+    option_prompt = "选项如下所示:\n" + "\n".join(doc["multi-choice options"])
+    question += " " + option_prompt
+    if "post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["post_prompt"]:
+        question += lmms_eval_specific_kwargs["post_prompt"]
     return question
 
 

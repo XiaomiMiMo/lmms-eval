@@ -5,4 +5,7 @@ metric_list:
   - metric: anls
     aggregation: mean
     higher_is_better: true
+  - metric: anls_strip_period
+    aggregation: mean
+    higher_is_better: true
 include: _default_template_infovqa_yaml

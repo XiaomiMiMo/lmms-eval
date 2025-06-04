@@ -8,8 +8,9 @@ from loguru import logger as eval_logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 from lmms_eval.tasks.mmbench.mmbench_evals import MMBench_Evaluator
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
-with open(Path(__file__).parent / "mmbench.yaml", "r") as f:
+with open(Path(__file__).parent / "mmbench_en.yaml", "r") as f:
     raw_data = f.readlines()
     safe_data = []
     for i, line in enumerate(raw_data):
@@ -19,21 +20,17 @@ with open(Path(__file__).parent / "mmbench.yaml", "r") as f:
 
     config = yaml.safe_load("".join(safe_data))
 
-GPT_EVAL_MODEL_NAME = config["metadata"]["gpt_eval_model_name"]
-API_TYPE = os.getenv("API_TYPE", "openai")
+API_TYPE = os.getenv("API_TYPE", None)
+MODEL_VERSION = os.getenv("MODEL_VERSION", None)
 
 if API_TYPE == "openai":
-    API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
+    API_URL = os.getenv("OPENAI_API_URL", "YOUR_API_URL")
     API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
-elif API_TYPE == "azure":
-    API_URL = os.getenv("AZURE_ENDPOINT", "https://api.cognitive.microsoft.com/sts/v1.0/issueToken")
-    API_KEY = os.getenv("AZURE_API_KEY", "YOUR_API_KEY")
 else:
-    API_URL = "YOUR_API_URL"
-    API_KEY = "YOUR_API_KEY"
+    raise ValueError(f"Invalid API_TYPE: {API_TYPE}")
 
 
-mmbench_evaluator = MMBench_Evaluator(sys_prompt=config["metadata"]["sys_prompt"], API_KEY=API_KEY, API_URL=API_URL, model_version=GPT_EVAL_MODEL_NAME)
+mmbench_evaluator = MMBench_Evaluator(sys_prompt=config["metadata"]["sys_prompt"], API_TYPE=API_TYPE, API_KEY=API_KEY, API_URL=API_URL, model_version=MODEL_VERSION)
 
 
 def mmbench_doc_to_visual(doc):
@@ -68,35 +65,31 @@ def mmbench_doc_to_text(doc, lmms_eval_specific_kwargs=None):
 
 def mmbench_process_results(doc, results):
     model_response = results[0].strip()
-    data = {
-        "gpt_eval_score": {
-            "index": doc["index"],
-            "question": doc["question"],
-            "answer": doc["answer"],
-            "prediction": model_response,
-            "hint": doc["hint"],
-            "source": doc["source"],
-            "split": doc["split"],
-            "category": doc["category"],
-            "L2-category": doc["L2-category"],
-        },
-        "submission": {
-            "index": doc["index"],
-            "question": doc["question"],
-            "answer": doc["answer"],
-            "prediction": model_response,
-            "hint": doc["hint"],
-            "source": doc["source"],
-            "split": doc["split"],
-            "category": doc["category"],
-            "L2-category": doc["L2-category"],
-        },
+    item = {
+        "index": doc["index"],
+        "question": doc["question"],
+        "answer": doc["answer"],
+        "prediction": model_response,
+        "hint": doc["hint"],
+        "source": doc["source"],
+        "split": doc["split"],
+        "category": doc["category"],
+        "L2-category": doc["L2-category"],
     }
     option_candidate = ["A", "B", "C", "D", "E"]
     for c in option_candidate:
-        data["submission"][c] = doc.get(c, "nan")
-        data["gpt_eval_score"][c] = doc.get(c, "nan")
+        item[c] = doc.get(c, "nan")
+    
+    extracted, _ = mmbench_evaluator.extract_answer_from_item(item)
+    item["extracted_prediction"] = extracted
+    item["score"] = int(item["answer"] == item["extracted_prediction"])
+    data = {
+        "gpt_eval_score": item,
+        "submission": item,
+    }
+    
     return data
+
 
 
 def mmbench_aggregate_dev_results_eval(results, args):
@@ -124,6 +117,13 @@ def mmbench_aggregate_dev_results_submission(results, args):
 def mmbench_aggregate_test_results(results, args):
     df = pd.DataFrame(results)
     excel_write_path = generate_submission_file("mmbench_en_test_results.xlsx", args)
+    with pd.ExcelWriter(excel_write_path) as writer:
+        df.to_excel(writer, index=False)
+    eval_logger.info(f"Saved results to {excel_write_path}")
+
+def mmbench_boxed_aggregate_test_results(results, args):
+    df = pd.DataFrame(results)
+    excel_write_path = generate_submission_file("mmbench_en_test_boxed_results.xlsx", args)
     with pd.ExcelWriter(excel_write_path) as writer:
         df.to_excel(writer, index=False)
     eval_logger.info(f"Saved results to {excel_write_path}")

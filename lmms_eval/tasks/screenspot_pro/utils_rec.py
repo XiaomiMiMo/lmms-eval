@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 import re
 
 from datasets import Dataset
@@ -15,30 +16,30 @@ def screenspot_rec_doc_to_visual(doc):
 
 PROMPT_EN = "Bounding box coordinates are specified in the format (top-left x, top-left y, bottom-right x, bottom-right y). Please provide the bounding box coordinates of the region that corresponds to the command: {instruction}"
 
-PROMPT_PT_EN = "Locate UI components that match the command: \"{instruction}\". Output a JSON in the format [{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]."
+PROMPT_MIMO_EN = "Locate UI components that match the command: \"{instruction}\". Output a JSON in the format [{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]."
 
 PROMPT_CN = "请按照[左上角x, 左上角y, 右下角x, 右下角y]的格式提供与命令相对应的区域边界框坐标：{instruction}"
 
-PROMPT_PT_CN = "定位如下命令所指定的UI元素：\"{instruction}\"。按照如下格式输出JSON：[{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]。"
+PROMPT_MIMO_CN = "定位如下命令所指定的UI元素：\"{instruction}\"。按照如下格式输出JSON：[{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]。"
 
 
 def screenspot_pro_en_rec_doc_to_text(doc):
     return PROMPT_EN.format(instruction=doc["instruction"])
 
 
-def screenspot_pro_en_rec_doc_to_text_pt(doc):
-    return PROMPT_PT_EN.format(instruction=doc["instruction"])
+def screenspot_pro_en_rec_doc_to_text_mimo(doc):
+    return PROMPT_MIMO_EN.format(instruction=doc["instruction"])
 
 
 def screenspot_pro_cn_rec_doc_to_text(doc):
     return PROMPT_CN.format(instruction=doc["instruction_cn"])
 
 
-def screenspot_pro_cn_rec_doc_to_text_pt(doc):
-    return PROMPT_PT_CN.format(instruction=doc["instruction_cn"])
+def screenspot_pro_cn_rec_doc_to_text_mimo(doc):
+    return PROMPT_MIMO_CN.format(instruction=doc["instruction_cn"])
 
 
-from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox
+from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox, parse_bbox_from_point
 import os
 
 
@@ -51,7 +52,11 @@ def screenspot_pro_rec_process_result(doc, result, inst_key="instruction"):
         a dictionary with key: metric name, value: metric value
     """
     pred = result[0] if len(result) > 0 else ""
-    pred = parse_bbox(pred)
+    pred1 = parse_bbox(pred)
+    if pred1 == [0,0,0,0]:
+        pred = parse_bbox_from_point(pred)
+    else:
+        pred = pred1
     pred = normalize_bbox(pred, doc["image_width"], doc["image_height"], resize_max_pixels=int(os.getenv("QWEN_RESIZE_MAX_PIXELS", 0)))
     bbox = normalize_bbox(doc["bbox"], doc["image_width"], doc["image_height"])
     iou = compute_iou(bbox, pred)

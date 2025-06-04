@@ -1,0 +1,33 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: lmms-lab/ChartQA
+dataset_kwargs:
+  token: True
+task: "chartqa_boxed_gpt"
+test_split: test
+output_type: generate_until
+doc_to_visual: !function utils.chartqa_doc_to_visual
+doc_to_text: !function utils.chartqa_doc_to_text
+doc_to_target: "answer"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0
+  do_sample: False
+process_results: !function utils.chartqa_process_results_judge
+metric_list:
+  - metric: relaxed_overall
+    aggregation: !function utils.chartqa_aggregate_result_judge
+    higher_is_better: true
+  - metric: relaxed_human_split
+    aggregation: !function utils.chartqa_aggregate_result_judge
+    higher_is_better: true
+  - metric: relaxed_augmented_split
+    aggregation: !function utils.chartqa_aggregate_result_judge
+    higher_is_better: true
+metadata:
+  - version: 0.0
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: ""
+    post_prompt: "\nPut your final answer in \\boxed{}. Try to answer using the content in the image as much as possible."
+

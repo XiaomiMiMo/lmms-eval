@@ -1,11 +1,12 @@
 # Copyright 2025 Xiaomi Corporation.
+
 import re
 from PIL import Image, ImageDraw
 
 from datasets import Dataset
 from loguru import logger as eval_logger
 
-from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox
+from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox, parse_bbox_from_point
 import os
 
 
@@ -20,11 +21,11 @@ def osworld_g_rec_doc_to_visual(doc):
 
 PROMPT = "Bounding box coordinates are specified in the format (top-left x, top-left y, bottom-right x, bottom-right y). Please provide the bounding box coordinates of the region that corresponds to the command: {instruction}"
 
-PROMPT_PT = 'Locate UI components that match the command: "{instruction}". Output a JSON in the format [{{"bbox_2d": [...], "label": "{{the_whole_command}}"}}, ...].'
+PROMPT_MIMO = 'Locate UI components that match the command: "{instruction}". Output a JSON in the format [{{"bbox_2d": [...], "label": "{{the_whole_command}}"}}, ...].'
 
 
-def osworld_g_rec_doc_to_text_pt(doc):
-    return PROMPT_PT.format(instruction=doc["instruction"])
+def osworld_g_rec_doc_to_text_mimo(doc):
+    return PROMPT_MIMO.format(instruction=doc["instruction"])
 
 
 def osworld_g_rec_process_result(doc, result):
@@ -38,9 +39,13 @@ def osworld_g_rec_process_result(doc, result):
     pred = result[0] if len(result) > 0 else ""
     gt = doc["mimo_bbox"]  # x1, y1, x2, x2
     image_width, image_height = doc["image_size"]
-    pred = parse_bbox(pred)
+    pred1 = parse_bbox(pred)
+    if pred1 == [0,0,0,0]:
+        pred = parse_bbox_from_point(pred)
+    else:
+        pred = pred1
     pred = normalize_bbox(pred, image_width, image_height, 
-                          resize_max_pixels=int(os.getenv("QWEN_RESIZE_MAX_PIXELS", 4096 * 28 * 28 )))
+                          resize_max_pixels=int(os.getenv("QWEN_RESIZE_MAX_PIXELS", 0)))
     bbox = normalize_bbox(gt, image_width, image_height)
     iou = compute_iou(bbox, pred)
     center_acc = compute_center_accuracy(bbox, pred)

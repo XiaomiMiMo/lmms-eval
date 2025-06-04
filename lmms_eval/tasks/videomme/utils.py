@@ -13,6 +13,7 @@ import yaml
 from loguru import logger as eval_logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 VIDEO_TYPE = ["short", "medium", "long"]
 CATEGORIES = ["Knowledge", "Film & Television", "Sports Competition", "Artistic Performance", "Life Record", "Multilingual"]

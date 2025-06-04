@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 task: "visualwebbench_action_ground"
 test_split: test
 dataset_path: visualwebbench/VisualWebBench

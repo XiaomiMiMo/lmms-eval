@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 dataset_path: XAI/vlmsareblind
 dataset_kwargs: {}
 task: "vlmsareblind"

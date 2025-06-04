@@ -8,6 +8,11 @@ doc_to_target: "answer"
 # The return value of process_results will be used by metrics
 process_results: !function utils.mmmu_process_results
 
+generation_kwargs:
+  max_new_tokens: 16
+  temperature: 0.0
+  do_sample: false
+
 metric_list:
   - metric: submission
     aggregation: !function utils.mmmu_test_aggregate_results_for_submission

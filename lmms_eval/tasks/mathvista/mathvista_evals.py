@@ -144,78 +144,35 @@ Model response: The correct answer is (B) 8/11.
 Extracted answer: B
 """
 
+NUM_SECONDS_TO_SLEEP = 5
 
 class MathVistaEvaluator:
-    API_TYPE = os.getenv("API_TYPE", "openai")
-
-    if API_TYPE == "openai":
-        API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
-        API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        }
-    elif API_TYPE == "azure":
-        API_URL = os.getenv("AZURE_ENDPOINT", "https://api.cognitive.microsoft.com/sts/v1.0/issueToken")
-        API_KEY = os.getenv("AZURE_API_KEY", "YOUR_API_KEY")
-        headers = {
-            "api-key": API_KEY,
-            "Content-Type": "application/json",
-        }
-
-    def __init__(self, api_key, gpt_model="gpt-3.5-turbo", quick_extract=False):
+    def __init__(self, api_type, api_url, api_key, gpt_model, quick_extract=False):
+        self.api_type = api_type
+        self.api_url = api_url
         self.api_key = api_key
         self.gpt_model = gpt_model
         self.quick_extract = quick_extract
+        if self.api_type == "openai":
+            from lmms_eval.tasks._task_utils.gpt_eval_utils import OpenAIClient
+            self.client = OpenAIClient(api_url=self.api_url, api_key=self.api_key, model=self.gpt_model, task="mathvista")
 
-    def _post_request(self, payload):
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        response = requests.post(self.API_URL, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        return response.json()
-
-    def get_chat_response(self, prompt, temperature=0, max_tokens=256, n=1, patience=5, sleep_time=0):
+                
+    def get_chat_response(self, prompt):
         messages = [
             {"role": "user", "content": prompt},
         ]
-        payload = {"model": self.gpt_model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "n": n}
-
-        if self.API_TYPE == "azure":
-            payload.pop("model")
-
-        while patience > 0:
-            patience -= 1
-            try:
-                response = self._post_request(payload)
-                if n == 1:
-                    prediction = response["choices"][0]["message"]["content"].strip()
-                    if prediction and prediction != "":
-                        return prediction
-                else:
-                    prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
-                    if prediction and prediction[0] != "":
-                        return prediction
-
-            except Exception as e:
-                if "Rate limit" not in str(e):
-                    eval_logger.error(e)
-
-                if "Please reduce the length of the messages" in str(e):
-                    eval_logger.error("!!Reduce prompt size")
-                    # reduce input prompt and keep the tail
-                    new_size = int(len(prompt) * 0.9)
-                    new_start = len(prompt) - new_size
-                    prompt = prompt[new_start:]
-                    payload["messages"] = [
-                        {"role": "user", "content": prompt},
-                    ]
-
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-        return ""
+        generation_kwargs = {
+            "temperature": 0,
+            "max_tokens": 256,
+        }
+        response = self.client.get_chat_response(
+            messages,
+            postprocess_response=lambda x: x.strip(),
+            default_response="",
+            generation_kwargs=generation_kwargs,
+        )
+        return response
 
     def verify_extraction(self, extraction):
         extraction = extraction.strip()
@@ -269,8 +226,11 @@ class MathVistaEvaluator:
 
         # general extraction
         try:
-            full_prompt = self.create_test_prompt(DEMO_PROMPT, query, response)
-            extraction = self.get_chat_response(full_prompt, temperature=0, max_tokens=256, n=1)
+            if re.findall(r'\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', response):
+                extraction = re.findall(r'\\boxed\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', response)[-1]
+            else:
+                full_prompt = self.create_test_prompt(DEMO_PROMPT, query, response)
+                extraction = self.get_chat_response(full_prompt)
             return extraction
         except Exception as e:
             eval_logger.error(e)
@@ -307,7 +267,7 @@ class MathVistaEvaluator:
 
             options = [chr(ord("A") + i) for i in range(len(choices))]
 
-            if extraction in options:
+            if extraction != "" and extraction.upper() in options:
                 # convert option letter to text, e.g. "A" -> "text"
                 ind = options.index(extraction)
                 extraction = choices[ind]
@@ -324,7 +284,7 @@ class MathVistaEvaluator:
 
         elif answer_type == "float":
             try:
-                extraction = str(round(float(extraction), precision))
+                extraction = str(round(float(extraction), int(precision)))
             except:
                 extraction = None
 
@@ -508,6 +468,23 @@ class MathVistaEvaluator:
                     hint_text = f"First perform reasoning, then finally answer the question requiring a Python list as an answer and provide the final list, e.g., [1, 2, 3], [1.2, 1.3, 1.4], at the end in the following format: Answer: xxx."
         elif shot_type == "direct":
             hint_text = ""
+        elif shot_type == "reasoning":
+            if question_type == "multi_choice":
+                assert answer_type == "text"
+                hint_text = "Answer the question with option letter from given choices. Put your final answer within \\boxed{}."
+            else:
+                assert answer_type in ["integer", "float", "list"]
+                if answer_type == "integer":
+                    hint_text = "Answer the question requiring an integer answer. Put your final answer within \\boxed{}."
+
+                elif answer_type == "float" and precision == 1:
+                    hint_text = "Answer the question requiring a floating-point number with one decimal place. Put your final answer within \\boxed{}."
+
+                elif answer_type == "float" and precision == 2:
+                    hint_text = "Answer the question requiring a floating-point number with two decimal places. Put your final answer within \\boxed{}."
+
+                elif answer_type == "list":
+                    hint_text = "Answer the question requiring a Python list. Put your final answer within \\boxed{}."
         else:
             assert shot_type == "code"
             hint_text = "Hint: Please generate a python code to solve the problem"
@@ -556,6 +533,8 @@ class MathVistaEvaluator:
         elif shot_type == "reason-first":
             prompt = ""
         elif shot_type == "direct":
+            prompt = ""
+        elif shot_type == "reasoning":
             prompt = ""
         else:
             assert shot_type == "code"

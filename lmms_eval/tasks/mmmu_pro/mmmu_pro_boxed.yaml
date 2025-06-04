@@ -1,0 +1,6 @@
+# Copyright 2025 Xiaomi Corporation.
+
+group: mmmu_pro_boxed
+task:
+- mmmu_pro_vision_boxed
+- mmmu_pro_standard_boxed

@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 group: screenspot_pro_cn_reg
 task: screenspot_pro_cn_reg_test
 test_split: test

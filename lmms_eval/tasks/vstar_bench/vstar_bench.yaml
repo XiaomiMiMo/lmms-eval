@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 dataset_path: lscpku/vstar_bench
 dataset_kwargs: {}
 task: "vstar_bench"

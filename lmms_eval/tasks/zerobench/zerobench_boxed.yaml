@@ -1,0 +1,6 @@
+# Copyright 2025 Xiaomi Corporation.
+
+group: zerobench_boxed
+task:
+  - zerobench_ori_boxed
+  - zerobench_subq_boxed 

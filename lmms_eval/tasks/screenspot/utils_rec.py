@@ -12,37 +12,21 @@ def screenspot_rec_doc_to_visual(doc):
     return [image.convert("RGB")]
 
 
+PROMPT = "Bounding box coordinates are specified in the format (top-left x, top-left y, bottom-right x, bottom-right y). Please provide the bounding box coordinates of the region that corresponds to the command: {instruction}"
+
+PROMPT_MIMO = "Locate UI components that match the command: \"{instruction}\". Output a JSON in the format [{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]."
+
+
 def screenspot_rec_doc_to_text(doc):
-    return (
-        "Bounding box coordinates are specified in the format (top-left x, top-left y, bottom-right x, bottom-right y). All values are floating point numbers bounded between 0 and 1 with two decimal places of precision (e.g., 0.15). Please provide the bounding box coordinates of the region that corresponds to the command: "
-        + doc["instruction"]
-    )
+    return PROMPT.format(instruction=doc["instruction"])
 
 
-def parse_float_sequence_within(input_str):
-    """
-    Extract the first sequence of four floating-point numbers within square brackets from a string.
-
-    Args:
-    input_str (str): A string that may contain a sequence of four floats within square brackets.
-
-    Returns:
-    list: A list of four floats if the pattern is found, or a list of four zeros if the pattern is not found.
-    """
-    # Define the regex pattern to find the first instance of four floats within square brackets
-    pattern = r"\[\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\]"
-
-    # Use re.search to find the first match of the pattern in the input string
-    match = re.search(pattern, input_str)
-
-    # If a match is found, convert the captured groups into a list of floats
-    if match:
-        return [float(match.group(i)) for i in range(1, 5)]
-
-    # If the input does not contain the pattern, return the null float sequence
-    return [0, 0, 0, 0]
+def screenspot_rec_doc_to_text_mimo(doc):
+    return PROMPT_MIMO.format(instruction=doc["instruction"])
 
 
+import os
+from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox, parse_bbox_from_point
 def screenspot_rec_process_result(doc, result):
     """
     Args:
@@ -52,9 +36,17 @@ def screenspot_rec_process_result(doc, result):
         a dictionary with key: metric name, value: metric value
     """
     pred = result[0] if len(result) > 0 else ""
-    pred = parse_float_sequence_within(pred)
+    pred1 = parse_bbox(pred)
+    if pred1 == [0,0,0,0]:
+        pred = parse_bbox_from_point(pred)
+    else:
+        pred = pred1
+    pred = normalize_bbox(pred, doc["image_width"], doc["image_height"], resize_max_pixels=int(os.getenv("QWEN_RESIZE_MAX_PIXELS", 0)))
+    bbox = normalize_bbox(doc["bbox"], doc["image_width"], doc["image_height"])
+    iou = compute_iou(bbox, pred)
+    center_acc = compute_center_accuracy(bbox, pred)
     ann_id = doc["file_name"]
-    data_dict = {"instruction": doc["instruction"], "pred": pred, "ann_id": ann_id, "bbox": doc["bbox"], "data_type": doc["data_type"], "data_source": doc["data_source"]}
+    data_dict = {"instruction": doc["instruction"], "pred": pred, "ann_id": ann_id, "bbox": bbox, "data_type": doc["data_type"], "data_source": doc["data_source"], "iou": iou, "center_acc": center_acc}
     return {f"screenspot_{metric}": data_dict for metric in REC_METRICS}
 
 
@@ -91,19 +83,17 @@ def compute_iou(box1, box2):
     return iou
 
 
-def compute_accuracy(box1, box2, threshold=0.5):
+def compute_accuracy(iou, threshold=0.5):
     """
     Compute the accuracy of two bounding boxes based on a specified threshold.
 
     Parameters:
-    - box1 (list of float): Bounding box [x_min, y_min, x_max, y_max].
-    - box2 (list of float): Bounding box [x_min, y_min, x_max, y_max].
+    - iou (float): IoU of the two bounding boxes.
     - threshold (float): Threshold for the IoU to consider the prediction correct.
 
     Returns:
     - float: Accuracy of the prediction based on the IoU threshold.
     """
-    iou = compute_iou(box1, box2)
     return iou >= threshold
 
 
@@ -137,14 +127,16 @@ def screenspot_rec_aggregation_result(results, metric):
     Returns:
     - dict: Dictionary containing the aggregated results for the specified metric.
     """
+    iou_scorers = {
+        "IoU": lambda x: x,
+        "ACC@0.1": lambda x: compute_accuracy(x, 0.1),
+        "ACC@0.3": lambda x: compute_accuracy(x, 0.3),
+        "ACC@0.5": lambda x: compute_accuracy(x, 0.5),
+        "ACC@0.7": lambda x: compute_accuracy(x, 0.7),
+        "ACC@0.9": lambda x: compute_accuracy(x, 0.9),
+    }
     scorers = {
-        "IoU": compute_iou,
-        "ACC@0.1": lambda x, y: compute_accuracy(x, y, 0.1),
-        "ACC@0.3": lambda x, y: compute_accuracy(x, y, 0.3),
-        "ACC@0.5": lambda x, y: compute_accuracy(x, y, 0.5),
-        "ACC@0.7": lambda x, y: compute_accuracy(x, y, 0.7),
-        "ACC@0.9": lambda x, y: compute_accuracy(x, y, 0.9),
-        "Center_ACC": compute_center_accuracy,
+        "Center_ACC": lambda x: x,
     }
     results_dict = {
         metric: [],
@@ -160,8 +152,16 @@ def screenspot_rec_aggregation_result(results, metric):
         gt = result["bbox"]
         pred = result["pred"]
 
-        # Compute the specified metric between the ground truth and predicted bounding boxes
-        score = scorers[metric](gt, pred)
+        if metric in iou_scorers:
+            # Extract the IoU
+            iou = result["iou"]
+            # Compute the specified metric between the ground truth and predicted bounding boxes
+            score = iou_scorers[metric](iou)
+        elif metric in scorers:
+            # Extract the center accuracy
+            center_acc = result["center_acc"]
+            # Compute the specified metric between the ground truth and predicted bounding boxes
+            score = scorers[metric](center_acc)
 
         results_dict[metric].append(score)
         if result["data_type"] == "text":

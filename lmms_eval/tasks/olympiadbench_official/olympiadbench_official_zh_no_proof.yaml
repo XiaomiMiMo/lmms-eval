@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 group: olympiadbench_official_zh_no_proof
 task:
 - olympiadbench_math_zh_no_proof

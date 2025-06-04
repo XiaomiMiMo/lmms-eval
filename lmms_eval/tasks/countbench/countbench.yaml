@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 dataset_path: vikhyatk/CountBenchQA
 dataset_kwargs: {}
 task: "countbench"

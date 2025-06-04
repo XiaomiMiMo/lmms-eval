@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 from PIL import ImageDraw
 from pycocoevalcap.eval import Bleu, Cider, COCOEvalCap, Meteor, Rouge, Spice
 from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer

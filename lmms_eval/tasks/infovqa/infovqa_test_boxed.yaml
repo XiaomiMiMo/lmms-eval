@@ -1,0 +1,29 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: lmms-lab/DocVQA
+dataset_name: InfographicVQA
+dataset_kwargs:
+  token: True
+doc_to_target: "answers"
+doc_to_visual: !function utils.infovqa_doc_to_visual
+doc_to_text: !function utils.infovqa_doc_to_text
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0
+  do_sample: False
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: ""
+    post_prompt: "\nPut your final answer within \\boxed{}. Try to answer using the content in the image as much as possible."
+task: "infovqa_test_boxed"
+test_split: test
+output_type: generate_until
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+process_results: !function utils.infovqa_process_results_judge
+metric_list:
+  - metric: submission
+    aggregation: !function utils.infovqa_test_aggregate_results
+    higher_is_better: true

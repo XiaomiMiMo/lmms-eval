@@ -1,0 +1,31 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: echo840/OCRBench
+dataset_kwargs:
+  token: True
+task: "ocrbench_boxed_gpt"
+test_split: test
+output_type: generate_until
+doc_to_visual: !function utils.ocrbench_doc_to_visual
+doc_to_text: !function utils.ocrbench_doc_to_text
+doc_to_target: "answer"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0
+  top_p: 1.0
+  num_beams: 1
+  do_sample: false
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+process_results: !function utils.ocrbench_process_results_judge
+metric_list:
+  - metric: ocrbench_accuracy
+    aggregation: !function utils.ocrbench_aggregate_accuracy
+    higher_is_better: true
+lmms_eval_specific_kwargs:
+  default:
+    post_prompt: "\nPut your final answer in \\boxed{{}}. Try to answer using the content in the image as much as possible."
+metadata:
+  - version: 0.0

@@ -1,0 +1,9 @@
+# Copyright 2025 Xiaomi Corporation.
+
+task: mmbench_cn_test_boxed
+test_split: test
+metric_list:
+  - metric: submission
+    aggregation: !function cn_utils.mmbench_boxed_aggregate_test_results
+    higher_is_better: true
+include: _default_template_mmbench_cn_yaml_boxed

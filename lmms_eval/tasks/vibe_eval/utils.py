@@ -4,25 +4,12 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
-
+from typing import List, Optional, Literal
+import time
 import yaml
-
-try:
-    from reka import ChatMessage
-    from reka.client import Reka
-except ImportError:
-    eval_logger.warning("Reka is not installed, please install it by `pip install reka-api`")
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter, AfterThinkFilter
 
 from loguru import logger as eval_logger
-
-try:
-    from reka import ChatMessage
-    from reka.client import Reka
-except ImportError:
-    eval_logger.warning("Reka is not installed, please install it by `pip install reka-api`")
-
-REKA_API_KEY = os.getenv("REKA_API_KEY", "YOUR_API_KEY")
 
 with open(Path(__file__).parent / "vibe_eval.yaml", "r") as f:
     raw_data = f.readlines()
@@ -34,7 +21,25 @@ with open(Path(__file__).parent / "vibe_eval.yaml", "r") as f:
 
     config = yaml.safe_load("".join(safe_data))
 
-EVALUATOR_NAME = config["metadata"]["evaluator"]
+
+API_TYPE = os.getenv("API_TYPE", None)
+MODEL_VERSION = os.getenv("MODEL_VERSION", None)
+if API_TYPE == "reka":
+    try:
+        from reka import ChatMessage
+        from reka.client import Reka
+    except ImportError:
+        eval_logger.warning("Reka is not installed, please install it by `pip install reka-api`")
+    REKA_API_KEY = os.getenv("REKA_API_KEY", "YOUR_API_KEY")
+    EVALUATOR_NAME = config["metadata"]["evaluator"]
+elif API_TYPE == "openai":
+    from lmms_eval.tasks._task_utils.gpt_eval_utils import OpenAIClient
+    API_URL = os.getenv("OPENAI_API_URL", "YOUR_API_URL")
+    API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
+    client = OpenAIClient(api_url=API_URL, api_key=API_KEY, model=MODEL_VERSION, task="vibe_eval")
+else:
+    raise ValueError(f"Invalid API type: {API_TYPE}")
+
 
 _PROMPT_WITH_IMAGE = """\
 [Question]
@@ -88,13 +93,6 @@ class Example:
     evaluator_explanation: Optional[str] = None
 
 
-class Evaluator(Enum):
-    # Use Reka Core (including image input).
-    REKA_CORE = "reka-core"
-
-    # Use Reka Core, only using text input.
-    REKA_CORE_TEXT = "reka-core-text"
-
 
 def make_evaluator_prompt(example: Example, include_image: bool) -> str:
     return (_PROMPT_WITH_IMAGE if include_image else _PROMPT_WITH_NO_IMAGE).format(
@@ -104,9 +102,9 @@ def make_evaluator_prompt(example: Example, include_image: bool) -> str:
     )
 
 
-def evaluate(example: Example, evaluator: Evaluator) -> Example:
+def evaluate_reka(example: Example, evaluator: Literal["reka-core", "reka-core-text"]) -> Example:
     """Evaluates the generation and populates the score and explanation fields."""
-    include_image = evaluator == Evaluator.REKA_CORE
+    include_image = evaluator == "reka-core"
     evaluator_prompt = make_evaluator_prompt(example, include_image=include_image)
     client = Reka(api_key=REKA_API_KEY)
     content = [
@@ -143,6 +141,31 @@ def evaluate(example: Example, evaluator: Evaluator) -> Example:
     return example
 
 
+def evaluate_openai(example: Example) -> Example:
+    prompt = make_evaluator_prompt(example, include_image=False)
+    messages = [
+        {"role": "user", "content": prompt}
+    ]
+    generation_kwargs = {
+        "max_tokens": 1024,
+        "temperature": 0.4,
+    }
+    response = client.get_chat_response(
+        messages, 
+        default_response=None, 
+        postprocess_response=lambda x: x.strip(), 
+        generation_kwargs=generation_kwargs
+    )
+    re_match = re.search(r"Rating:\s*([1-5])", response) if response is not None else None
+    if re_match is None:
+        example.score = 0
+        example.evaluator_explanation = response
+        return example
+    example.score = int(re_match.group(1))
+    example.evaluator_explanation = response
+    return example
+
+
 def vibe_doc_to_visual(doc):
     return [doc["image"].convert("RGB")]
 
@@ -166,9 +189,13 @@ def vibe_process_results(doc, results):
     generation = results[0]
     example = Example(example_id=example_id, category=category, prompt=prompt, reference=reference, media_filename=media_filename, media_url=media_url, generation=generation)
 
-    evaluator = Evaluator.REKA_CORE if EVALUATOR_NAME == "reka-core" else Evaluator.REKA_CORE_TEXT
+    if API_TYPE == "reka":
+        example = evaluate_reka(example, evaluator=EVALUATOR_NAME)
+    elif API_TYPE == "openai":
+        example = evaluate_openai(example)
+    else:
+        raise ValueError(f"Invalid API type: {API_TYPE}")
 
-    example = evaluate(example, evaluator=evaluator)
     data_dict = {
         "score": example.score,
         "evaluator_explanation": example.evaluator_explanation,
@@ -187,7 +214,7 @@ def vibe_process_results(doc, results):
 
 def _mean(scores: List[int]) -> float:
     """Scale from 1-5 to 0-100 and compute means."""
-    return sum(25 * (score - 1) for score in scores) / len(scores)
+    return sum(25 * (score - 1) for score in scores) / len(scores) if len(scores) > 0 else 0
 
 
 def vibe_aggregation_results(results, category):

@@ -1,0 +1,29 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: jonathan-roberts1/zerobench
+dataset_kwargs: {}
+task: "zerobench_ori_boxed"
+test_split: zerobench  
+output_type: generate_until
+doc_to_visual: !function utils.zerobench_doc_to_visual
+doc_to_text: !function utils.zerobench_doc_to_text
+doc_to_target: "question_answer"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0.0
+  do_sample: false 
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: ""
+    post_prompt: "\nPut your final answer in \\boxed{}."
+process_results: !function utils.zerobench_process_results
+metric_list:
+  - metric: exact_match_accuracy   
+    aggregation: !function utils.zerobench_aggregate_results
+    higher_is_better: true
+metadata:
+  - version: 0.0

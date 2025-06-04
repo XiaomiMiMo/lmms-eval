@@ -1,12 +1,14 @@
-dataset_path: lmms-lab/RefCOCOPlus
+dataset_path: lscpku/RefCOCOplus_rec
+dataset_kwargs:
+  token: True
 output_type: generate_until
-process_docs: !function utils_rec.refcoco_bbox_rec_preprocess_dataset
 doc_to_visual: !function utils_rec.refcoco_bbox_rec_doc_to_visual
 doc_to_text: !function utils_rec.refcoco_bbox_rec_doc_to_text
 doc_to_target: "bbox"
 generation_kwargs:
-  until:
-    - "ASSISTANT:"
+  max_new_tokens: 32768
+  do_sample: false
+  temperature: 0.0
 process_results: !function utils_rec.refcoco_bbox_rec_process_result
 metric_list:
   - metric: refcoco_IoU

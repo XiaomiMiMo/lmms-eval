@@ -19,20 +19,17 @@ with open(Path(__file__).parent / "mmbench.yaml", "r") as f:
 
     config = yaml.safe_load("".join(safe_data))
 
-GPT_EVAL_MODEL_NAME = config["metadata"]["gpt_eval_model_name"]
-API_TYPE = os.getenv("API_TYPE", "openai")
+
+API_TYPE = os.getenv("API_TYPE", None)
+MODEL_VERSION = os.getenv("MODEL_VERSION", None)
 
 if API_TYPE == "openai":
-    API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
+    API_URL = os.getenv("OPENAI_API_URL", "YOUR_API_URL")
     API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
-elif API_TYPE == "azure":
-    API_URL = os.getenv("AZURE_ENDPOINT", "https://api.cognitive.microsoft.com/sts/v1.0/issueToken")
-    API_KEY = os.getenv("AZURE_API_KEY", "YOUR_API_KEY")
 else:
-    API_URL = "YOUR_API_URL"
-    API_KEY = "YOUR_API_KEY"
+    raise ValueError(f"Invalid API_TYPE: {API_TYPE}")
 
-mmbench_evaluator = MMBench_Evaluator(sys_prompt=config["metadata"]["sys_prompt"], API_KEY=API_KEY, API_URL=API_URL, model_version=GPT_EVAL_MODEL_NAME)
+mmbench_evaluator = MMBench_Evaluator(sys_prompt=config["metadata"]["sys_prompt"], API_KEY=API_KEY, API_URL=API_URL, model_version=MODEL_VERSION)
 
 
 def mmbench_doc_to_visual(doc):

@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 import os
 import ast
 import io
@@ -17,11 +18,12 @@ def blink_doc_to_visual(doc):
             images.append(image.convert("RGB"))
     return images
 
-def blink_doc_to_text(doc):
-    return doc["prompt"] + "\n" + "Answer with the option's letter from the given choices directly."
+def blink_doc_to_text(doc, lmms_eval_specific_kwargs=None):
+    prompt = doc["prompt"]
+    if lmms_eval_specific_kwargs is not None and "post_prompt" in lmms_eval_specific_kwargs:
+        prompt += lmms_eval_specific_kwargs["post_prompt"]
+    return prompt
 
-def blink_doc_to_text_boxed(doc):
-    return doc["prompt"] + "\n" + "Put your final answer in \\boxed{}."
 
 def blink_process_results(doc, results):
     parsed_preds = []

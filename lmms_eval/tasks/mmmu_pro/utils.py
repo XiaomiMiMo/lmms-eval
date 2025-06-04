@@ -11,6 +11,7 @@ import yaml
 from loguru import logger as eval_logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 with open(Path(__file__).parent / "_default_template_yaml", "r") as f:
     raw_data = f.readlines()
@@ -71,7 +72,7 @@ def mmmu_pro_doc_to_visual(doc):
 # MMMU-PRO's all questions are multiple-choice questions
 def mmmu_pro_process_results(doc, results):
     pred = results[0]
-    if "question" in doc and "options" in doc:
+    if "options" in doc:
         index2ans, all_choices = get_multi_choice_info(ast.literal_eval(doc["options"]))
         parsed_pred = parse_multi_choice_response(pred, all_choices, index2ans)
     else:

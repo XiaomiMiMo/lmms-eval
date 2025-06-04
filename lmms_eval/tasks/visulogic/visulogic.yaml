@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 dataset_path: lscpku/VisuLogic
 dataset_kwargs: {}
 task: "visulogic"

@@ -1,5 +1,6 @@
 # Copyright 2025 Xiaomi Corporation.
-dataset_path: lmms-lab/DynaMath_Sample
+
+dataset_path: lscpku/DynaMath_Sample
 dataset_kwargs:
   token: True
 task: "dynamath_test"
@@ -18,4 +19,7 @@ process_results: !function utils.dynamath_process_results
 metric_list:
   - metric: dynamath_standard_eval
     aggregation: !function utils.dynamath_aggregate_results
+    higher_is_better: True
+  - metric: dynamath_worst_case_acc
+    aggregation: !function utils.dynamath_aggregate_results_worst_case_acc
     higher_is_better: True

@@ -10,6 +10,7 @@ import yaml
 from decord import VideoReader, cpu
 
 import lmms_eval.tasks._task_utils.file_utils as file_utils
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 with open(Path(__file__).parent / "_default_template_yaml", "r") as f:
     raw_data = f.readlines()
@@ -61,7 +62,7 @@ def egoschema_doc_to_text(doc, lmms_eval_specific_kwargs=None):
     if "option" in doc:
         for op in doc["option"]:
             question += "\n" + op
-        post_prompt = "\nAnswer with the option's letter from the given choices directly."
+        # post_prompt = "\nAnswer with the option's letter from the given choices directly."
 
     return f"{pre_prompt}{question}{post_prompt}"
 

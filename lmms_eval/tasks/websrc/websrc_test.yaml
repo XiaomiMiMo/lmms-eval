@@ -15,5 +15,8 @@ metric_list:
   - metric: submission
     aggregation: !function utils.websrc_test_aggregate_results_for_submission
     higher_is_better: true
+lmms_eval_specific_kwargs:
+  default:
+    post_prompt: "\nAnswer the question using a single word or phrase."
 metadata:
   - version: 0.0

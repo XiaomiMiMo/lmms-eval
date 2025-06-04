@@ -1,4 +1,5 @@
 import json
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 
 def seed_doc_to_visual(doc):
@@ -12,6 +13,15 @@ def seed_doc_to_text(doc):
     question += f"C. {doc['choice_c']}\n"
     question += f"D. {doc['choice_d']}"
     return f"{question}\nAnswer with the option's letter from the given choices directly."
+
+
+def seed_doc_to_text_boxed(doc):
+    question = doc["question"]
+    question += "\n" + f"A. {doc['choice_a']}\n"
+    question += f"B. {doc['choice_b']}\n"
+    question += f"C. {doc['choice_c']}\n"
+    question += f"D. {doc['choice_d']}"
+    return f"{question}\nPut your final answer in \\boxed{{}}."
 
 
 def seed_process_result(doc, result):

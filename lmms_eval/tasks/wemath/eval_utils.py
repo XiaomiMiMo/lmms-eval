@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 """
 -------------------------------------------
 Used for evaluate the performance of different LMMs on four-dimensional metrics.
@@ -34,7 +35,7 @@ def load_and_process_data(data):
     return df
 
 # Function to load and process JSON data
-def load_and_process_r_data(data):
+def load_and_process_data_boxed(data):
     df = pd.DataFrame(data)
     df['processed_answer'] = df['response'].apply(lambda x: x[0] if x and x[0] in 'ABCDEFGH' else None)
     df['joker'] = df['processed_answer'] == df['answer']
@@ -86,8 +87,8 @@ def compute_final_scores(metrics, total_count):
         'InsufficientKnowledge_rate': "{:.2%}".format(total_counts['InsufficientKnowledge'] / total_count),
         'CompleteMastery_loose_rate': "{:.2%}".format(total_counts['CompleteMastery_loose'] / total_count),
         'CompleteMastery_strict_rate': "{:.2%}".format(total_counts['CompleteMastery_strict'] / total_count),
-        'RoteMemorization_loose_rate': "{:.2%}".format(total_counts['RoteMemorization_loose'] / (total_counts['CompleteMastery_loose'] + total_counts['RoteMemorization_loose'])),
-        'RoteMemorization_strict_rate': "{:.2%}".format(total_counts['RoteMemorization_strict'] / (total_counts['CompleteMastery_strict'] + total_counts['RoteMemorization_strict']))
+        'RoteMemorization_loose_rate': "{:.2%}".format(total_counts['RoteMemorization_loose'] / (total_counts['CompleteMastery_loose'] + total_counts['RoteMemorization_loose'])) if total_counts['CompleteMastery_loose'] + total_counts['RoteMemorization_loose'] != 0 else 0,
+        'RoteMemorization_strict_rate': "{:.2%}".format(total_counts['RoteMemorization_strict'] / (total_counts['CompleteMastery_strict'] + total_counts['RoteMemorization_strict'])) if total_counts['CompleteMastery_strict'] + total_counts['RoteMemorization_strict'] != 0 else 0
     }
     return total_counts, rates
 
@@ -133,11 +134,11 @@ def evaluate_models(results):
 
 
 # Main function to evaluate models
-def evaluate_r_models(results):
+def evaluate_models_boxed(results):
 
     main_results_df = pd.DataFrame(columns=['Score (Strict)', 'InsufficientKnowledge (Strict)', 'InadequateGeneralization (Strict)', 'CompleteMastery (Strict)', 'RoteMemorization (Strict)', 'Score (Loose)', 'InsufficientKnowledge (Loose)', 'InadequateGeneralization (Loose)', 'CompleteMastery (Loose)', 'RoteMemorization (Loose)'])
     
-    data = load_and_process_r_data(results)
+    data = load_and_process_data_boxed(results)
     data_2steps = data[data['key'].str.contains('2steps')]
     data_3steps = data[data['key'].str.contains('3steps')]
     merged_2steps = process_steps_data(data_2steps, 2)

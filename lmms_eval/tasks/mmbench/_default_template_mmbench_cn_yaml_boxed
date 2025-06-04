@@ -1,0 +1,32 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: lmms-lab/MMBench
+dataset_kwargs:
+  token: True
+doc_to_target: "answer"
+dataset_name: "cn"
+output_type: generate_until
+doc_to_visual: !function cn_utils.mmbench_doc_to_visual
+doc_to_text: !function cn_utils.mmbench_doc_to_text
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0
+  top_p: 1.0
+  num_beams: 1
+  do_sample: false
+process_results: !function cn_utils.mmbench_process_results
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function cn_utils.BoxedFilter
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: ""
+    post_prompt: "\n将你的最终答案放在\\boxed{}中。"
+model_specific_generation_kwargs:
+  llava:
+    image_aspect_ratio: original
+metadata:
+  version: 0.0
+  gpt_eval_model_name: "gpt-3.5-turbo-0613"
+  sys_prompt: "有如下几个选项："

@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 import datetime
 import json
 import os
@@ -8,7 +9,7 @@ from loguru import logger as eval_logger
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 from lmms_eval.tasks.olympiadbench_official.olympiadbench_evals import OlympiadBenchEvaluator
-from lmms_eval.tasks._task_utils.math_verify_ext import compute_score_with_ext
+from lmms_eval.tasks._task_utils.math_verify_utils import MathVerifyFn
 
 dir_name = os.path.dirname(os.path.abspath(__file__))
 
@@ -68,7 +69,7 @@ def olympiadbench_doc_to_text(doc):
     final_question = pre_prompt + question + "\n" + post_prompt
     return final_question
 
-
+math_verify_fn = MathVerifyFn()
 def olympiadbench_process_results(doc, results):
     precision = doc["error"]
     is_proving = doc["question_type"] == "Theorem proof" or doc["final_answer"] is None
@@ -87,7 +88,7 @@ def olympiadbench_process_results(doc, results):
     accuracy = olympiadbench_evaluator.judge(ext_prediction, gt, precision)
     accuracy = int(accuracy)
 
-    math_verify_score, math_verify_ext = compute_score_with_ext(prediction, gt)
+    math_verify_score, math_verify_ext = math_verify_fn(prediction, gt)
 
     category = f"{doc['subject']}_{doc['language']}"
     return {

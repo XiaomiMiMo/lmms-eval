@@ -2,6 +2,7 @@ import re
 
 from lmms_eval.filters.extraction import ExtendedRegexFilter
 from lmms_eval.filters.transformation import MapFilter
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 REPLACE_PROMPT = "Please answer directly with only the letter of the correct option and nothing else."
 

@@ -78,3 +78,11 @@ class MultiChoiceRegexFilter(ExtendedRegexFilter):
             filtered_resps.append(filtered[0])
 
         return filtered_resps
+
+
+from lmms_eval.tasks._task_utils.eval_utils import extract_final_boxed_content
+class MultiChoiceBoxedRegexFilter(MultiChoiceRegexFilter):
+    def apply(self, resps, docs):
+        resps = [[extract_final_boxed_content(r)] for resp in resps for r in resp]
+        filtered_resps = super().apply(resps, docs)
+        return filtered_resps

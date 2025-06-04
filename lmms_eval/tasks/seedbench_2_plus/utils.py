@@ -1,4 +1,11 @@
 import json
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
+
+
+default_model_specific_kwargs = {
+    "img_token": "<image>",
+    "post_prompt": "Answer with the option's letter from the given choices directly.",
+}
 
 
 def seed_doc_to_visual(doc):
@@ -12,14 +19,17 @@ def parse_choice_img(choice: str, img_token: str):
 
 
 def seed_doc_to_text(doc, model_specific_kwargs=None):
+    img_token = model_specific_kwargs.get("img_token", default_model_specific_kwargs["img_token"])
+    post_prompt = model_specific_kwargs.get("post_prompt", default_model_specific_kwargs["post_prompt"])
     question = doc["question"]
-    question.replace("<img>", model_specific_kwargs["img_token"])
-    question += "\n" + f"A. {parse_choice_img(doc['choice_A'], model_specific_kwargs['img_token'])}\n"
-    question += f"B. {parse_choice_img(doc['choice_B'], model_specific_kwargs['img_token'])}\n"
-    question += f"C. {parse_choice_img(doc['choice_C'], model_specific_kwargs['img_token'])}\n"
-    question += f"D. {parse_choice_img(doc['choice_D'], model_specific_kwargs['img_token'])}"
+    question.replace("<img>", img_token)
+    question += "\n" + f"A. {parse_choice_img(doc['choice_A'], img_token)}\n"
+    question += f"B. {parse_choice_img(doc['choice_B'], img_token)}\n"
+    question += f"C. {parse_choice_img(doc['choice_C'], img_token)}\n"
+    question += f"D. {parse_choice_img(doc['choice_D'], img_token)}"
 
-    return f"{question}\n{model_specific_kwargs['post_prompt']}"
+    return f"{question}\n{post_prompt}"
+
 
 
 def seed_process_result(doc, result):

@@ -1,0 +1,31 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: m-a-p/CII-Bench  
+dataset_kwargs:
+  token: True
+task: "cii_bench_boxed"
+test_split: test  
+output_type: generate_until
+doc_to_visual: !function utils.cii_bench_doc_to_visual
+doc_to_text: !function utils.cii_bench_doc_to_text
+doc_to_target: "answer"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0.0
+  do_sample: false  
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: ""
+    post_prompt: "\n将你的最终答案放在\\boxed{}中。"
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+# The return value of process_results will be used by metrics
+process_results: !function utils.cii_bench_process_results
+metric_list:
+  - metric: accuracy   
+    aggregation: !function utils.cii_bench_aggregate_results
+    higher_is_better: true
+metadata:
+  - version: 0.0

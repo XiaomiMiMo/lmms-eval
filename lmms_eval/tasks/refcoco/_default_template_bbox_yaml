@@ -4,8 +4,9 @@ doc_to_visual: !function utils.refcoco_bbox_doc_to_visual
 doc_to_text: !function utils.refcoco_doc_to_text
 doc_to_target: "answer"
 generation_kwargs:
-  until:
-    - "ASSISTANT:"
+  max_new_tokens: 256
+  do_sample: false
+  temperature: 0.0
 process_results: !function utils.refcoco_process_result
 metric_list:
   - metric: refcoco_Bleu_4 

@@ -1,5 +1,6 @@
 # Copyright 2025 Xiaomi Corporation.
-dataset_path: lmms-lab/We-Math
+
+dataset_path: We-Math/We-Math
 dataset_kwargs:
   token: True
 task: "wemath_testmini"

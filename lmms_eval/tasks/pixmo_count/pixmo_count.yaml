@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 dataset_path: tobiaslee/pixmo_count_eval
 dataset_kwargs: {}
 task: "pixmo_count"

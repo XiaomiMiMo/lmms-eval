@@ -16,6 +16,7 @@ from loguru import logger as eval_logger
 from PIL import Image
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 
 def timestamp_to_seconds(timestamp):

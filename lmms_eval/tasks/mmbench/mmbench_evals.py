@@ -13,11 +13,16 @@ from tqdm import tqdm
 
 
 class MMBench_Evaluator:
-    def __init__(self, sys_prompt="There are several options:", API_KEY="", API_URL="", model_version="gpt-3.5-turbo-0613"):
+    def __init__(self, sys_prompt="There are several options:", API_TYPE="openai", API_KEY="", API_URL="", model_version=None):
+        # print("Creating MMBench Evaluator with sys_prompt:", sys_prompt)
         self.sys_prompt = sys_prompt
         self.model_version = model_version
         self.API_KEY = API_KEY
         self.API_URL = API_URL
+        self.API_TYPE = API_TYPE
+        if self.API_TYPE == "openai":
+            from lmms_eval.tasks._task_utils.gpt_eval_utils import OpenAIClient
+            self.client = OpenAIClient(api_url=self.API_URL, api_key=self.API_KEY, model=self.model_version, task="mmbench")
 
     def create_options_prompt(self, row_data, option_candidate):
         available_keys = set(row_data.keys()) & set(option_candidate)
@@ -32,7 +37,7 @@ class MMBench_Evaluator:
     # Prompt Building
     def build_option_str(self, option_list):
         chars = string.ascii_uppercase
-        s = "There are several options: \n"
+        s = f"{self.sys_prompt}\n"
         for c, opt in zip(chars, option_list):
             if not pd.isna(opt):
                 s += f"{c}. {opt}\n"
@@ -127,48 +132,29 @@ class MMBench_Evaluator:
     def prefetch_answer(self, item):
         choices = self.build_choices(item)
         return self.can_infer(item["prediction"], choices)
-
-    def _post_request(self, payload):
-        headers = {
-            "Authorization": f"Bearer {self.API_KEY}",
-            "Content-Type": "application/json",
-        }
-        response = requests.post(self.API_URL, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        return response.json()
-
-    def get_chat_response(self, prompt, temperature=0, max_tokens=256, n=1, patience=5, sleep_time=3):
+    
+    def get_chat_response(self, prompt):
         messages = [
             {"role": "user", "content": prompt},
         ]
-        payload = {"model": self.model_version, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "n": n}
-
-        while patience > 0:
-            patience -= 1
-            try:
-                response = self._post_request(payload)
-                if n == 1:
-                    prediction = response["choices"][0]["message"]["content"].strip()
-                    if prediction and prediction != "":
-                        return prediction
-                else:
-                    prediction = [choice["message"]["content"].strip() for choice in response["choices"]]
-                    if prediction and prediction[0] != "":
-                        return prediction
-
-            except Exception as e:
-                eval_logger.info(f"Attempt {patience + 1} failed with error: {e}")
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-
-        return "Failed to obtain answer via API"
+        generation_kwargs = {
+            "temperature": 0,
+            "max_tokens": 256,
+        }
+        response = self.client.get_chat_response(
+            prompt, 
+            default_response="Failed to obtain answer via API", 
+            postprocess_response=lambda x: x.strip(),
+            generation_kwargs=generation_kwargs
+        )
+        return response
 
     def extract_answer_from_item(self, item):
         options = self.extract_options(item)
         option_str = self.build_option_str(options)
 
         prompt = self.build_prompt(item["question"], option_str, item["prediction"])
-        retry = 3
+        retry = 1
         choices = self.build_choices(item)
 
         ret = self.can_infer(item["prediction"], choices)
@@ -206,18 +192,9 @@ class MMBench_Evaluator:
             item = sub_data.iloc[i]
             idx = item["index"]
             GT.append(answer_map[idx])
-            PRED.append(self.prefetch_answer(item))
-            if PRED[-1] and (GT[-1] != PRED[-1]):
+            PRED.append(item["extracted_prediction"])
+            if PRED[i] != GT[i]:
                 return 0
-
-        for i in range(lt):
-            if PRED[i]:
-                continue
-            else:
-                ret, _ = self.extract_answer_from_item(sub_data.iloc[i])
-                PRED[i] = ret
-                if PRED[i] != GT[i]:
-                    return 0
         return 1
 
     def calculate_hit_rates(self, data):

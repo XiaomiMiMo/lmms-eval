@@ -1,11 +1,11 @@
-dataset_path: rootsautomation/ScreenSpot
+dataset_path: lscpku/ScreenSpot
 output_type: generate_until
 doc_to_visual: !function utils_rec.screenspot_rec_doc_to_visual
 doc_to_text: !function utils_rec.screenspot_rec_doc_to_text
 doc_to_target: "bbox"
 generation_kwargs:
-  until:
-    - "ASSISTANT:"
+  temperature: 0.0
+  max_new_tokens: 32768
 process_results: !function utils_rec.screenspot_rec_process_result
 metric_list:
   - metric: screenspot_IoU

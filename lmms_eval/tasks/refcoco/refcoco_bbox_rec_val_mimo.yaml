@@ -1,0 +1,6 @@
+# Copyright 2025 Xiaomi Corporation.
+
+group: refcoco_bbox_rec
+task: refcoco_bbox_rec_val_mimo
+test_split: val
+include: _default_template_refcoco_bbox_rec_mimo_yaml

@@ -1,0 +1,35 @@
+# Copyright 2025 Xiaomi Corporation.
+
+dataset_path: lmms-lab/DocVQA
+dataset_name: DocVQA
+dataset_kwargs:
+  token: True
+output_type: generate_until
+doc_to_visual: !function utils.docvqa_doc_to_visual
+doc_to_text: !function utils.docvqa_doc_to_text
+doc_to_target: "answers"
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0
+  do_sample: False
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: ""
+    post_prompt: "\nPut your final answer in \\boxed{}. Try to answer using the content in the image as much as possible."
+task: "docvqa_val_boxed_gpt"
+test_split: validation
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.BoxedFilter
+process_results: !function utils.docvqa_process_results_judge
+metric_list:
+  - metric: gpt_eval_score
+    aggregation: !function utils.docvqa_aggregate_result_judge
+    higher_is_better: true
+  - metric: anls
+    aggregation: mean
+    higher_is_better: true
+  - metric: anls_strip_period
+    aggregation: mean
+    higher_is_better: true

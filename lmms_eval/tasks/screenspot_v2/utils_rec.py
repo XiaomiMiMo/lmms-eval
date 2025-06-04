@@ -1,4 +1,5 @@
 # Copyright 2025 Xiaomi Corporation.
+
 import re
 from PIL import Image, ImageDraw
 
@@ -16,18 +17,18 @@ def screenspot_rec_doc_to_visual(doc):
 
 PROMPT = "Bounding box coordinates are specified in the format (top-left x, top-left y, bottom-right x, bottom-right y). Please provide the bounding box coordinates of the region that corresponds to the command: {instruction}"
 
-PROMPT_PT = "Locate UI components that match the command: \"{instruction}\". Output a JSON in the format [{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]."
+PROMPT_MIMO = "Locate UI components that match the command: \"{instruction}\". Output a JSON in the format [{{\"bbox_2d\": [...], \"label\": \"{{the_whole_command}}\"}}, ...]."
 
 
 def screenspot_rec_doc_to_text(doc):
     return PROMPT.format(instruction=doc["instruction"])
 
 
-def screenspot_rec_doc_to_text_pt(doc):
-    return PROMPT_PT.format(instruction=doc["instruction"])
+def screenspot_rec_doc_to_text_mimo(doc):
+    return PROMPT_MIMO.format(instruction=doc["instruction"])
 
 
-from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox
+from lmms_eval.tasks._task_utils.eval_utils import parse_bbox, normalize_bbox, parse_bbox_from_point
 import os
 
 def screenspot_rec_process_result(doc, result):
@@ -53,7 +54,11 @@ def screenspot_rec_process_result(doc, result):
     # print(f"pred: {pred}")
     # print(f'doc["bbox"]: {doc["bbox"]}')
     # exit()
-    pred = parse_bbox(pred)
+    pred1 = parse_bbox(pred)
+    if pred1 == [0,0,0,0]:
+        pred = parse_bbox_from_point(pred)
+    else:
+        pred = pred1
     pred = normalize_bbox(pred, doc["image_width"], doc["image_height"], resize_max_pixels=int(os.getenv("QWEN_RESIZE_MAX_PIXELS", 0)))
     bbox = normalize_bbox(gt, doc["image_width"], doc["image_height"])
     iou = compute_iou(bbox, pred)

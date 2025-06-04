@@ -17,6 +17,7 @@ from openai import OpenAI
 from tqdm import tqdm
 
 import lmms_eval.tasks._task_utils.file_utils as file_utils
+from lmms_eval.tasks._task_utils.eval_utils import BoxedFilter
 
 with open(Path(__file__).parent / "_default_template_yaml", "r") as f:
     raw_data = f.readlines()
@@ -29,16 +30,17 @@ with open(Path(__file__).parent / "_default_template_yaml", "r") as f:
     config = yaml.safe_load("".join(safe_data))
 
 
-API_TYPE = os.getenv("API_TYPE", "openai")
+API_TYPE = os.getenv("API_TYPE", None)
+MODEL_VERSION = os.getenv("MODEL_VERSION", None)
 
 if API_TYPE == "openai":
-    API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
+    from lmms_eval.tasks._task_utils.gpt_eval_utils import OpenAIClient
+    API_URL = os.getenv("OPENAI_API_URL", "YOUR_API_URL")
     API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    }
-
+    client = OpenAIClient(api_url=API_URL, api_key=API_KEY, model=MODEL_VERSION, task="tempcompass")
+else:
+    raise ValueError(f"不支持的API类型: {API_TYPE}")
+    
 # We will unzip all the zip files
 # To HF HOME cache dir
 # And load it here
@@ -393,45 +395,17 @@ def parse_llm_output_for_captioning(llm_output, gt_answer):
     return eval_result
 
 
-# utils functions for captioning: get gpt outputs
-def get_llm_output_for_captioning(prompt):
-    data = {
-        "max_tokens": 128,
-        "model": "gpt-3.5-turbo-1106",
-        "temperature": 1.0,
-        "top_p": 1,
-        "presence_penalty": 1,
-        "messages": [{"role": "system", "content": "You are an AI assistant for question answering."}, {"role": "user", "content": prompt}],
-    }
-    response = requests.post(API_URL, headers=headers, data=json.dumps(data).encode("utf-8"))
-    result = response.content.decode("utf-8")
-    dict_result = json.loads(result)
-    token_count = dict_result["usage"]
-    try:
-        llm_output = dict_result["choices"][0]["message"]["content"].strip()
-    except:
-        if "error" in dict_result and dict_result["error"]["type"] == "invalid_request_error":
-            llm_output = "invalid_request_error"
-        else:
-            llm_output = ""
-    return llm_output, token_count
 
 
 # utils functions for captioning: consolidate and return gpt outputs
-def get_eval_result_for_captioning(prompt, mc_answer, maxtry=10):
-    while True:
-        try:
-            llm_output, token_count = get_llm_output_for_captioning(prompt)
-            eval_result = parse_llm_output_for_captioning(llm_output, gt_answer=mc_answer)
-            eval_result["token_count"] = token_count
-            return eval_result
-        except:
-            if maxtry <= 0:
-                eval_result = {"chatgpt-reasoning": None, "chatgpt-answer": None, "rating": -1, "token_count": None}
-                return eval_result
-            maxtry -= 1
-            print(f"Not success! {maxtry} retries remaining...")
-            time.sleep(random.uniform(1, 2))
+def get_eval_result_for_captioning(prompt, mc_answer):
+    llm_output = get_llm_output(
+        prompt, 
+        default_response={"rating": -1, "chatgpt-answer": None, "chatgpt-reasoning": None},
+        postprocess_response=lambda x: parse_llm_output_for_captioning(x.strip(), gt_answer=mc_answer)
+    )
+    return llm_output
+
 
 
 # utils function for caption_matching
@@ -471,30 +445,35 @@ def extract_pred(video_llm_output):
 
 # utils function for gpt_evaluation when rule-based matching is unsuccessful
 def get_eval_result(prompt, maxtry=10, sys_prompt=None):
-    llm_output = None
-    while True:
-        try:
-            llm_output = get_llm_output(prompt, sys_prompt)
-            rating = llm_output_to_rating(llm_output)
-            return llm_output, rating
-        except:
-            if maxtry <= 0:
-                return llm_output, 0
-            maxtry -= 1
-            print(f"Not success! {maxtry} retries remaining...")
-            time.sleep(random.uniform(1, 2))
+    llm_output = get_llm_output(
+        prompt, 
+        sys_prompt, 
+        default_response=(None, 0),
+        postprocess_response=lambda x: (x, llm_output_to_rating(x))
+    )
+    return llm_output
 
 
 # utils function for gpt evaluation
-def get_llm_output(prompt, sys_prompt, max_tokens=128):
+def get_llm_output(prompt, sys_prompt=None, max_tokens=128, default_response=None, postprocess_response=None):
     if sys_prompt is None:
         sys_prompt = "You are an AI assistant for question answering."
-    data = {"max_tokens": max_tokens, "model": "gpt-3.5-turbo-1106", "temperature": 1.0, "top_p": 1, "presence_penalty": 1, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]}
-    response = requests.post(API_URL, headers=headers, data=json.dumps(data).encode("utf-8"))
-    result = response.content.decode("utf-8")
-    dict_result = json.loads(result)
-    llm_output = dict_result["choices"][0]["message"]["content"].strip()
-    return llm_output
+    messages = [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]
+    generation_kwargs = {
+        "max_tokens": max_tokens,
+        "temperature": 1.0,
+        "top_p": 1,
+        "presence_penalty": 1,
+    }
+    if postprocess_response is None:
+        postprocess_response = lambda x: x.strip()
+    response = client.get_chat_response(
+        messages,
+        postprocess_response=postprocess_response,
+        default_response=default_response,
+        generation_kwargs=generation_kwargs,
+    )
+    return response
 
 
 # utils function that converts gpt evaluation into rating
