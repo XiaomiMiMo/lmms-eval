@@ -34,7 +34,7 @@ We contribute **over 20 new evaluation tasks** covering:
 * **GUI understanding and grounding**
 * **Video understanding and reasoning**
 
-👉 A complete list of supported tasks is available [here](https://github.com/XiaomiMiMo/lmms-eval/mimovl_docs/tasks.md).
+👉 A complete list of supported tasks is available [here](mimovl_docs/tasks.md).
 
 
 ## Usage
