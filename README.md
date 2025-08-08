@@ -1,6 +1,6 @@
 # The Evaluation Suite of Xiaomi MiMo-VL
 
-To promote **rigorous**, **reproducible**, and **thinking-oriented** evaluation of Vision-Language Models (VLMs), we open-source our evaluation suite for for [**MiMo-VL**](https://github.com/XiaomiMiMo/MiMo-VL) and beyond.
+To promote **rigorous**, **reproducible**, and **thinking-oriented** evaluation of Vision-Language Models (VLMs), we open-source our evaluation suite for [**MiMo-VL**](https://github.com/XiaomiMiMo/MiMo-VL) and beyond.
 
 Built on top of the excellent [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework, we introduce several improvements in model integration, evaluation protocol, and task coverage to better support the next generation of reasoning-capable VLMs.
 
