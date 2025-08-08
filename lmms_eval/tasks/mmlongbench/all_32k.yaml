@@ -1,0 +1,9 @@
+group: mmlongbench_32k
+task:
+  - mmlongbench_vrag_32k
+  - mmlongbench_summ_32k
+  - mmlongbench_niah_32k
+  - mmlongbench_icl_32k
+  - mmlongbench_docqa_32k
+  - mmlongbench_text_docqa_32k
+  - mmlongbench_text_rag_32k

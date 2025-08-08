@@ -1,0 +1,3 @@
+task: mmlongbench_vrag_64k
+dataset_name: "vrag-64k"
+include: _default_mmlongbench_yaml

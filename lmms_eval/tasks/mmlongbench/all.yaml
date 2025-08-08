@@ -1,0 +1,37 @@
+group: mmlongbench_all
+task:
+  - mmlongbench_vrag_8k
+  - mmlongbench_vrag_16k
+  - mmlongbench_vrag_32k
+  - mmlongbench_vrag_64k
+  - mmlongbench_vrag_128k
+  - mmlongbench_summ_8k
+  - mmlongbench_summ_16k
+  - mmlongbench_summ_32k
+  - mmlongbench_summ_64k
+  - mmlongbench_summ_128k
+  - mmlongbench_niah_8k
+  - mmlongbench_niah_16k
+  - mmlongbench_niah_32k
+  - mmlongbench_niah_64k
+  - mmlongbench_niah_128k
+  - mmlongbench_icl_8k
+  - mmlongbench_icl_16k
+  - mmlongbench_icl_32k
+  - mmlongbench_icl_64k
+  - mmlongbench_icl_128k
+  - mmlongbench_docqa_8k
+  - mmlongbench_docqa_16k
+  - mmlongbench_docqa_32k
+  - mmlongbench_docqa_64k
+  - mmlongbench_docqa_128k
+  - mmlongbench_text_docqa_8k
+  - mmlongbench_text_docqa_16k
+  - mmlongbench_text_docqa_32k
+  - mmlongbench_text_docqa_64k
+  - mmlongbench_text_docqa_128k
+  - mmlongbench_text_rag_8k
+  - mmlongbench_text_rag_16k
+  - mmlongbench_text_rag_32k
+  - mmlongbench_text_rag_64k
+  - mmlongbench_text_rag_128k

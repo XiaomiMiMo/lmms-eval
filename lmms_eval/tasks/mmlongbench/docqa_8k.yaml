@@ -1,0 +1,3 @@
+task: mmlongbench_docqa_8k
+dataset_name: "docqa-8k"
+include: _default_mmlongbench_yaml

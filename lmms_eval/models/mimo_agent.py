@@ -1,6 +1,3 @@
-# Copyright 2025 Xiaomi Corporation.
-
-
 from typing import List, Optional, Tuple, Literal
 
 import numpy as np
@@ -8,10 +5,12 @@ from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
 from PIL import Image
 from tqdm import tqdm
+import json
 
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.tasks._task_utils.gui_utils import mimo_agent2mimo
 
 import torch
 from transformers import AutoProcessor
@@ -59,8 +58,6 @@ class MiVLLMDataset(Dataset):
         contexts, gen_kwargs, doc_to_visual, doc_id, task, split = self.requests[idx].arguments
         if "max_new_tokens" not in gen_kwargs:
             gen_kwargs["max_new_tokens"] = 32768
-        if gen_kwargs["max_new_tokens"] > 16384:
-            gen_kwargs["max_new_tokens"] = 16384
         if "temperature" not in gen_kwargs:
             gen_kwargs["temperature"] = 0
         if "top_p" not in gen_kwargs:
@@ -85,38 +82,40 @@ class MiVLLMDataset(Dataset):
                     content.append({"type": "image", "image": visual, **self.image_mm_processor_kwargs})
         content.append({"type": "text", "text": contexts})
 
-        text_content = [_ for _ in content if _.get("type") == "text"]
-        media_content = [_ for _ in content if _.get("type") != "text"]
         if self.media_position in ["first", "last"]:
+            text_content = [_ for _ in content if _.get("type") == "text"]
+            media_content = [_ for _ in content if _.get("type") != "text"]
             content = media_content + text_content if self.media_position == "first" else text_content + media_content
         elif self.media_position == "interleaved":
-            # TODO: only work for single text content and when the number of media content == the number of media tokens
             interleaved_content = []
             media_idx = 0
             for _text_content in text_content:
                 text = _text_content["text"]
                 for j in range(32):
-                    text = text.replace(f"<image {j}>", f"<image>").replace(f"\\<image {j}\\>", "<image>").replace("<|image|>", "<image>")
+                    text = text.replace(f"<image {j}>", f"<image>").replace(f"\\<image {j}\\>", "<image>")
                 split_text = text.split("<image>")
                 for i in range(len(split_text)):
                     interleaved_content.append({"type": "text", "text": split_text[i]})
                     if media_idx < len(media_content):
                         interleaved_content.append(media_content[media_idx])
                     media_idx += 1
-            if media_idx > len(media_content) + 1:
-                eval_logger.warning(f"Number of media content is less than the number of media tokens. media_idx: {media_idx}, len(media_content): {len(media_content)}; doc_id: {doc_id}, task: {task}, split: {split}")
-                # print(f"text_content: {text_content}\nmedia_content: {media_content}\ninterleaved_content: {interleaved_content}\nmedia_idx: {media_idx}")  # for debug
+            if media_idx > len(media_content):
+                eval_logger.warning(f"Number of media content is less than the number of media tokens.")
                 content = interleaved_content
             elif media_idx < len(media_content):
                 content = media_content[media_idx:] + interleaved_content
             else:
                 content = interleaved_content
+            
+            # DEBUG
+            # print(content)
+            # exit()
         else:
             raise ValueError(f"Invalid media position: {self.media_position}")
         
         content.append({"type": "text", "text": self.thinking_prompt_user})
         message = [
-            {"role": "system", "content": "You are a helpful assistant."},
+            # {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": content},
         ]
         _prompt = self.processor.apply_chat_template(message, tokenize=False, add_generation_prompt=True)
@@ -147,8 +146,8 @@ def mivllm_collate_fn(batch):
     return idxs, messages, prompts, sampling_params
 
 
-@register_model("mivllm")
-class MiVLLM(lmms):
+@register_model("mimo_agent")
+class MiMoAgent(lmms):
     def __init__(
         self,
         model_version: str,
@@ -237,6 +236,7 @@ class MiVLLM(lmms):
             enforce_eager=True,
             max_num_seqs=max_num_seqs,
             mm_processor_kwargs=mm_processor_kwargs,
+            disable_mm_preprocessor_cache=True,
         )
         self.processor = AutoProcessor.from_pretrained(self.model_version)
         if accelerator.num_processes > 1:
@@ -300,6 +300,7 @@ class MiVLLM(lmms):
             pt_dataset,
             batch_size=batch_size,
             shuffle=True,
+            pin_memory=True,
             num_workers=self.num_workers,
             prefetch_factor=self.prefetch_factor,
             collate_fn=mivllm_collate_fn
@@ -314,8 +315,17 @@ class MiVLLM(lmms):
             
             assert len(response_text) == len(messages)
 
+            index = 0
+
             for idx, text in zip(idxs, response_text):
-                res[idx] = text
+                current_image = prompts[index]["multi_modal_data"]["image"][0]
+                current_image_width, current_image_height = current_image.size
+                try:
+                    res[idx] = json.dumps(mimo_agent2mimo(text, current_image_width, current_image_height))
+                except Exception as e:
+                    eval_logger.warning(f"Error in mimo_agent2mimo: {e}")
+                    res[idx] = json.dumps({"action_name": ""})
+                index += 1
             pbar.update(len(messages))
 
         pbar.close()

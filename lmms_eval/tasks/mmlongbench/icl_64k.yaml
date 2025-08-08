@@ -1,0 +1,3 @@
+task: mmlongbench_icl_64k
+dataset_name: "icl-64k"
+include: _default_mmlongbench_yaml

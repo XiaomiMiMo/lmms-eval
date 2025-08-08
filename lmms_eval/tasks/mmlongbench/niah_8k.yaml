@@ -1,0 +1,3 @@
+task: mmlongbench_niah_8k
+dataset_name: "niah-8k"
+include: _default_mmlongbench_yaml

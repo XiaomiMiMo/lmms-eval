@@ -1,0 +1,3 @@
+task: mmlongbench_text_docqa_64k
+dataset_name: "text_docqa-64k"
+include: _default_mmlongbench_yaml

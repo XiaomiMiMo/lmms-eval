@@ -1,0 +1,3 @@
+task: mmlongbench_text_rag_128k
+dataset_name: "text_rag-128k"
+include: _default_mmlongbench_yaml

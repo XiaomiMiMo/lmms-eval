@@ -1,0 +1,23 @@
+dataset_path: lscpku/PhysReason
+task: "physreason_testmini"
+test_split: testmini
+output_type: generate_until
+doc_to_visual: !function utils.physreason_doc_to_visual
+doc_to_text: !function utils.physreason_doc_to_text
+doc_to_target: !function utils.physreason_doc_to_target
+generation_kwargs:
+  max_new_tokens: 32768
+  temperature: 0.0
+  do_sample: false 
+lmms_eval_specific_kwargs:
+  default:
+    post_prompt: ""
+filter_list:
+  - name: "flexible-extract"
+    filter:
+      - function: !function utils.AfterThinkFilter
+process_results: !function utils.physreason_process_results
+metric_list:
+  - metric: physreason_score
+    aggregation: !function utils.physreason_aggregate_results
+    higher_is_better: true

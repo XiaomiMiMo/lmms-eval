@@ -56,6 +56,7 @@ AVAILABLE_MODELS = {
     "llama_vision": "LlamaVision",
     "aria": "Aria",
     "mivllm": "MiVLLM",
+    "mimo_agent": "MiMoAgent",
 }
 
 

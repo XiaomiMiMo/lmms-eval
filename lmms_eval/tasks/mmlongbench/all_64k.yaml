@@ -1,0 +1,9 @@
+group: mmlongbench_64k
+task:
+  - mmlongbench_vrag_64k
+  - mmlongbench_summ_64k
+  - mmlongbench_niah_64k
+  - mmlongbench_icl_64k
+  - mmlongbench_docqa_64k
+  - mmlongbench_text_docqa_64k
+  - mmlongbench_text_rag_64k

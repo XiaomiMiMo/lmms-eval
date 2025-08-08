@@ -1,0 +1,9 @@
+group: mmlongbench_128k
+task:
+  - mmlongbench_vrag_128k
+  - mmlongbench_summ_128k
+  - mmlongbench_niah_128k
+  - mmlongbench_icl_128k
+  - mmlongbench_docqa_128k
+  - mmlongbench_text_docqa_128k
+  - mmlongbench_text_rag_128k

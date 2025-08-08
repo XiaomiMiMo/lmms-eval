@@ -1,0 +1,3 @@
+task: mmlongbench_summ_32k
+dataset_name: "summ-32k"
+include: _default_mmlongbench_yaml

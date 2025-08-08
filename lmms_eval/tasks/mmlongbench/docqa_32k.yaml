@@ -1,0 +1,3 @@
+task: mmlongbench_docqa_32k
+dataset_name: "docqa-32k"
+include: _default_mmlongbench_yaml

@@ -1,0 +1,3 @@
+task: mmlongbench_icl_8k
+dataset_name: "icl-8k"
+include: _default_mmlongbench_yaml

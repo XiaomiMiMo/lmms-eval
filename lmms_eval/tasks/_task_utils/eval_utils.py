@@ -1,9 +1,6 @@
-# Copyright 2025 Xiaomi Corporation.
-
-
 import re
 
-def extract_final_boxed_content(text):
+def extract_final_boxed_content(text, strict=False):
     """
     Extracts the content of the final \\boxed{} command in the given text.
     
@@ -21,7 +18,31 @@ def extract_final_boxed_content(text):
     if boxed_matches:
         return boxed_matches[-1]
     else:
-        return text
+        if strict:
+            return ""
+        else:
+            return text
+
+
+def extract_after_think_content(text, strict=False):
+    """
+    Extracts the content after the last </think> tag in the given text.
+    
+    Args:
+        text (str): The text containing </think> tags   
+    
+    Returns:
+        str: The content after the last </think> tag, or the original text if no </think> tag is found
+    """
+    # Find the last occurrence of </think>
+    last_think_end = text.rfind("</think>")
+    if last_think_end != -1:
+        return text[last_think_end + len("</think>"):].strip()
+    else:
+        if strict:
+            return ""
+        else:
+            return text
 
 
 def parse_bbox(input_str):
@@ -107,18 +128,17 @@ class BoxedFilter(ExtendedRegexFilter):
         filtered_resps = [[extract_final_boxed_content(r)][0] for resp in resps for r in resp]
         return filtered_resps
 
+
+class StrictBoxedFilter(ExtendedRegexFilter):
+    def apply(self, resps, docs):
+        filtered_resps = [[extract_final_boxed_content(r, strict=True)][0] for resp in resps for r in resp]
+        return filtered_resps
+
+
 class AfterThinkFilter(ExtendedRegexFilter):
     def apply(self, resps, docs):
         filtered_resps = []
         for resp in resps:
             for r in resp:
-                # Find the last occurrence of </think>
-                last_think_end = r.rfind("</think>")
-                if last_think_end != -1:
-                    # Extract everything after the last </think>
-                    result = r[last_think_end + len("</think>"):].strip()
-                    filtered_resps.append(result)
-                else:
-                    # If no </think> found, use the original response
-                    filtered_resps.append(r)
+                filtered_resps.append(extract_after_think_content(r))
         return filtered_resps

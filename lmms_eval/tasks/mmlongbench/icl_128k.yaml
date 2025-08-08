@@ -1,0 +1,3 @@
+task: mmlongbench_icl_128k
+dataset_name: "icl-128k"
+include: _default_mmlongbench_yaml

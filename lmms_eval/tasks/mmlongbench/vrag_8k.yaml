@@ -1,0 +1,3 @@
+task: mmlongbench_vrag_8k
+dataset_name: "vrag-8k"
+include: _default_mmlongbench_yaml

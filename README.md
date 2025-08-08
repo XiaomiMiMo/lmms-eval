@@ -4,6 +4,14 @@ To promote **rigorous**, **reproducible**, and **thinking-oriented** evaluation 
 
 Built on top of the excellent [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework, we introduce several improvements in model integration, evaluation protocol, and task coverage to better support the next generation of reasoning-capable VLMs.
 
+## 📰 News
+
+**[25/08/08]** We update our evaluation framework along with the release of [MiMo-VL-7B-SFT-2508](https://huggingface.co/XiaomiMiMo/MiMo-VL-7B-SFT-2508) and [MiMo-VL-7B-RL-2508](https://huggingface.co/XiaomiMiMo/MiMo-VL-7B-RL-2508). New features include: 
+- Additional GUI action benchmarks AndroidControl and CAGUI (evaluated using `--model mimo_agent`)
+- Additional evaluation benchmarks on video spatial reasoning (VSI-Bench), physics reasoning (PhysReason), multi-modal long context understanding (MMLongBench), multi-modal instruction following (MM-IFEval); 
+- Enables no_think evaluation by adding model argument `disable_thinking_user=True`
+
+
 ## 🔧 Key Features
 
 ### 1. ⚙️ `MiVLLM`: A vLLM-based Model Wrapper for MiMo-VL

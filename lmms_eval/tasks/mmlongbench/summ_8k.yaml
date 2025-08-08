@@ -1,0 +1,3 @@
+task: mmlongbench_summ_8k
+dataset_name: "summ-8k"
+include: _default_mmlongbench_yaml

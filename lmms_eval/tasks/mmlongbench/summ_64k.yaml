@@ -1,0 +1,3 @@
+task: mmlongbench_summ_64k
+dataset_name: "summ-64k"
+include: _default_mmlongbench_yaml
